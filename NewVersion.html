@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Commander: Farm & Grow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #c6e6b1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #6a994e;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .resources {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .resource {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-color: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .farm-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+        
+        .plots-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .plot {
+            background-color: #a87036;
+            border-radius: 5px;
+            position: relative;
+            aspect-ratio: 1/1;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border: 3px solid #7f5425;
+            transition: all 0.3s ease;
+        }
+        
+        .plot:hover {
+            transform: scale(1.03);
+        }
+        
+        .plot.locked {
+            background-color: #5c5c5c;
+            border: 3px dashed #333;
+            color: white;
+        }
+        
+        .plot-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: white;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+        }
+        
+        .crop-growing {
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 5px;
+            background-color: #4caf50;
+            transition: width 1s linear;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background-color: #f8f8f8;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            background-color: #6a994e;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .tab.active {
+            background-color: #386641;
+        }
+        
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .shop-item, .upgrade-item {
+            background-color: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-image {
+            width: 40px;
+            height: 40px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+        }
+        
+        .item-info {
+            flex: 1;
+            padding: 0 10px;
+        }
+        
+        .item-name {
+            font-weight: bold;
+        }
+        
+        .item-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .btn {
+            background-color: #6a994e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #386641;
+        }
+        
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .crop-icon {
+            font-size: 32px;
+        }
+        
+        .notifications {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 50;
+        }
+        
+        .notification {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-left: 5px solid #6a994e;
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        #offline-rewards {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .rewards-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        .modal-title {
+            margin-bottom: 15px;
+            color: #386641;
+        }
+        
+        .reward-info {
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        #settings-menu {
+            padding: 15px;
+        }
+        
+        .setting-group {
+            margin-bottom: 20px;
+        }
+        
+        .setting-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .save-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .upgrade-categories {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .upgrade-category {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upgrade-category.active {
+            background-color: #6a994e;
+            color: white;
+        }
+
+        .upgrade-section {
+            display: none;
+        }
+        
+        .upgrade-section.active {
+            display: block;
+        }
+
+        .rare-crop {
+            position: relative;
+        }
+
+        .rare-crop::after {
+            content: "✨";
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 16px;
+        }
+
+        .upgrade-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .upgrade-bar {
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+
+        .upgrade-bar-fill {
+            height: 100%;
+            background-color: #6a994e;
+            width: 0%;
+        }
+
+        .badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            padding: 2px 5px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stats-value {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Crop Commander</h1>
+        <div class="resources">
+            <div class="resource">
+                <span>💰</span>
+                <span id="money">100</span>
+            </div>
+            <div class="resource">
+                <span>⭐</span>
+                <span id="level">1</span>
+            </div>
+            <div class="resource">
+                <span>💎</span>
+                <span id="premium-currency">0</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="farm-area">
+            <div class="plots-container" id="plots">
+                <!-- Plots will be generated here -->
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="tabs">
+                <div class="tab active" data-tab="shop">Shop</div>
+                <div class="tab" data-tab="upgrades">Upgrades</div>
+                <div class="tab" data-tab="stats">Stats</div>
+                <div class="tab" data-tab="settings">Settings</div>
+            </div>
+            
+            <div class="tab-content active" id="shop">
+                <h2>Crops</h2>
+                <div id="crops-shop">
+                    <!-- Crops will be listed here -->
+                </div>
+            </div>
+            
+            <div class="tab-content" id="upgrades">
+                <h2>Farm Upgrades</h2>
+                
+                <div class="upgrade-categories">
+                    <div class="upgrade-category active" data-category="farm">Farm</div>
+                    <div class="upgrade-category" data-category="speed">Speed</div>
+                    <div class="upgrade-category" data-category="product">Product</div>
+                    <div class="upgrade-category" data-category="rarity">Rarity</div>
+                </div>
+                
+                <div class="upgrade-section active" id="farm-upgrades">
+                    <div id="farm-upgrades-list">
+                        <!-- Farm upgrades will be listed here -->
+                    </div>
+                </div>
+                
+                <div class="upgrade-section" id="speed-upgrades">
+                    <div id="speed-upgrades-list">
+                        <!-- Speed upgrades will be listed here -->
+                    </div>
+                </div>
+                
+                <div class="upgrade-section" id="product-upgrades">
+                    <div id="product-upgrades-list">
+                        <!-- Product upgrades will be listed here -->
+                    </div>
+                </div>
+                
+                <div class="upgrade-section" id="rarity-upgrades">
+                    <div id="rarity-upgrades-list">
+                        <!-- Rarity upgrades will be listed here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="stats">
+                <h2>Farm Statistics</h2>
+                <div id="stats-container">
+                    <!-- Stats will be listed here -->
+                </div>
+            </div>
+            
+            <div class="tab-content" id="settings">
+                <div id="settings-menu">
+                    <div class="setting-group">
+                        <div class="setting-title">Save Game</div>
+                        <div class="save-actions">
+                            <button class="btn" id="save-game">Save Game</button>
+                            <button class="btn" id="load-game">Load Game</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <div class="setting-title">Export/Import</div>
+                        <div class="save-actions">
+                            <button class="btn" id="export-save">Export Save</button>
+                            <button class="btn" id="import-save">Import Save</button>
+                        </div>
+                        <textarea id="import-export-data" style="width: 100%; height: 100px; margin-top: 10px; display: none;"></textarea>
+                    </div>
+                    <div class="setting-group">
+                        <div class="setting-title">Reset Game</div>
+                        <button class="btn" id="reset-game" style="background-color: #d62828;">Reset All Progress</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notifications" id="notifications">
+        <!-- Notifications will appear here -->
+    </div>
+    
+    <div id="offline-rewards">
+        <div class="rewards-container">
+            <h2 class="modal-title">Welcome Back!</h2>
+            <p>While you were away, your farm was still producing.</p>
+            <div class="reward-info">
+                You earned: <span id="offline-money">0</span> 💰
+            </div>
+            <button class="btn" id="claim-rewards">Claim Rewards</button>
+        </div>
+    </div>
+    
+    <script>
+        // Game state
+        let gameState = {
+            money: 100,
+            level: 1,
+            premiumCurrency: 0,
+            lastSaved: Date.now(),
+            plots: [
+                { id: 0, unlocked: true, cropId: null, soilType: 'basic', plantedTime: 0, growthProgress: 0, rarity: 'common' }
+            ],
+            soilTypes: {
+                basic: { name: 'Basic Soil', growthMultiplier: 1, unlocked: true },
+                fertile: { name: 'Fertile Soil', growthMultiplier: 1.5, unlocked: false },
+                rich: { name: 'Rich Soil', growthMultiplier: 2, unlocked: false },
+                premium: { name: 'Premium Soil', growthMultiplier: 3, unlocked: false }
+            },
+            upgrades: {
+                // Farm upgrades
+                plotUnlock: { level: 0, cost: 300, maxLevel: 9 },
+                soilFertile: { level: 0, cost: 500, maxLevel: 1 },
+                soilRich: { level: 0, cost: 2000, maxLevel: 1 },
+                soilPremium: { level: 0, cost: 5000, maxLevel: 1 },
+                offlineBonus: { level: 0, cost: 1000, maxLevel: 5 },
+                
+                // New upgrades
+                // Speed upgrades - reduce crop growth time
+                speedGlobal: { level: 0, cost: 200, maxLevel: 10, effect: 0.05 }, // Each level reduces growth time by 5%
+                speedTier1: { level: 0, cost: 150, maxLevel: 5, effect: 0.1 },  // Each level reduces Tier 1 crop growth time by 10%
+                speedTier2: { level: 0, cost: 400, maxLevel: 5, effect: 0.1 },  // Each level reduces Tier 2 crop growth time by 10%
+                speedTier3: { level: 0, cost: 800, maxLevel: 5, effect: 0.1 },  // Each level reduces Tier 3 crop growth time by 10%
+                speedTier4: { level: 0, cost: 1600, maxLevel: 5, effect: 0.1 }, // Each level reduces Tier 4 crop growth time by 10%
+                
+                // Product upgrades - increase crop sell price
+                productGlobal: { level: 0, cost: 300, maxLevel: 10, effect: 0.05 }, // Each level increases sell price by 5%
+                productTier1: { level: 0, cost: 200, maxLevel: 5, effect: 0.1 },    // Each level increases Tier 1 crop sell price by 10%
+                productTier2: { level: 0, cost: 500, maxLevel: 5, effect: 0.1 },    // Each level increases Tier 2 crop sell price by 10%
+                productTier3: { level: 0, cost: 1000, maxLevel: 5, effect: 0.1 },   // Each level increases Tier 3 crop sell price by 10%
+                productTier4: { level: 0, cost: 2000, maxLevel: 5, effect: 0.1 },   // Each level increases Tier 4 crop sell price by 10%
+                
+                // Rarity upgrades - increase chance of rare crop variations
+                rarityChance: { level: 0, cost: 500, maxLevel: 10, effect: 0.02 },  // Each level increases rare crop chance by 2%
+                rarityBonus: { level: 0, cost: 800, maxLevel: 5, effect: 0.2 }      // Each level increases rare crop value bonus by 20%
+            },
+            stats: {
+                totalMoney: 100,
+                cropsHarvested: 0,
+                rareCropsFound: 0,
+                timePlayed: 0,
+                lastLoginDate: Date.now()
+            }
+        };
+        
+        // Define crops - each tier has different growth times and profits
+        const crops = {
+            wheat: { id: 'wheat', name: 'Wheat', icon: '🌾', growTime: 30, cost: 10, sellPrice: 25, tier: 1, unlockLevel: 1 },
+            carrot: { id: 'carrot', name: 'Carrot', icon: '🥕', growTime: 60, cost: 20, sellPrice: 60, tier: 1, unlockLevel: 1 },
+            potato: { id: 'potato', name: 'Potato', icon: '🥔', growTime: 90, cost: 30, sellPrice: 100, tier: 1, unlockLevel: 1 },
+            
+            tomato: { id: 'tomato', name: 'Tomato', icon: '🍅', growTime: 120, cost: 50, sellPrice: 150, tier: 2, unlockLevel: 2 },
+            corn: { id: 'corn', name: 'Corn', icon: '🌽', growTime: 180, cost: 75, sellPrice: 240, tier: 2, unlockLevel: 2 },
+            strawberry: { id: 'strawberry', name: 'Strawberry', icon: '🍓', growTime: 240, cost: 100, sellPrice: 350, tier: 2, unlockLevel: 3 },
+            
+            pineapple: { id: 'pineapple', name: 'Pineapple', icon: '🍍', growTime: 360, cost: 200, sellPrice: 700, tier: 3, unlockLevel: 4 },
+            watermelon: { id: 'watermelon', name: 'Watermelon', icon: '🍉', growTime: 480, cost: 350, sellPrice: 1200, tier: 3, unlockLevel: 5 },
+            
+            sunflower: { id: 'sunflower', name: 'Sunflower', icon: '🌻', growTime: 600, cost: 500, sellPrice: 1800, tier: 4, unlockLevel: 6 }
+        };
+
+        // Define rarity levels and bonuses
+        const rarityLevels = {
+            common: { name: 'Common', valueMultiplier: 1.0, chance: 0.85 },
+            uncommon: { name: 'Uncommon', valueMultiplier: 1.5, chance: 0.10 },
+            rare: { name: 'Rare', valueMultiplier: 2.5, chance: 0.04 },
+            epic: { name: 'Epic', valueMultiplier: 4.0, chance: 0.01 }
+        };
+        
+        // DOM Elements
+        const moneyDisplay = document.getElementById('money');
+        const levelDisplay = document.getElementById('level');
+        const premiumDisplay = document.getElementById('premium-currency');
+        const plotsContainer = document.getElementById('plots');
+        const cropsShop = document.getElementById('crops-shop');
+        const farmUpgradesList = document.getElementById('farm-upgrades-list');
+        const speedUpgradesList = document.getElementById('speed-upgrades-list');
+        const productUpgradesList = document.getElementById('product-upgrades-list');
+        const rarityUpgradesList = document.getElementById('rarity-upgrades-list');
+        const statsContainer = document.getElementById('stats-container');
+        const notificationsContainer = document.getElementById('notifications');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const offlineRewardsModal = document.getElementById('offline-rewards');
+        const offlineMoneyDisplay = document.getElementById('offline-money');
+        const claimRewardsBtn = document.getElementById('claim-rewards');
+        const upgradeCategories = document.querySelectorAll('.upgrade-category');
+        const upgradeSections = document.querySelectorAll('.upgrade-section');
+        
+        // Event Listeners for tabs
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const tabContentId = tab.getAttribute('data-tab');
+                document.getElementById(tabContentId).classList.add('active');
+            });
+        });
+
+        // Event Listeners for upgrade categories
+        upgradeCategories.forEach(category => {
+            category.addEventListener('click', () => {
+                upgradeCategories.forEach(c => c.classList.remove('active'));
+                upgradeSections.forEach(s => s.classList.remove('active'));
+                
+                category.classList.add('active');
+                const categoryId = category.getAttribute('data-category');
+                document.getElementById(`${categoryId}-upgrades`).classList.add('active');
+            });
+        });
+        
+        // Initialize game
+        function init() {
+            loadGame();
+            renderPlots();
+            renderShop();
+            renderAllUpgrades();
+            updateStats();
+            setupSaveButtons();
+            
+            // Check for offline rewards
+            checkOfflineRewards();
+            
+            // Start game loop
+            setInterval(gameLoop, 1000);
+            
+            // Auto-save every minute
+            setInterval(() => {
+                saveGame();
+                showNotification('Game autosaved');
+            }, 60000);
+        }
+        
+        // Game loop (runs every second)
+        function gameLoop() {
+            updateCrops();
+            updateUI();
+            gameState.stats.timePlayed += 1;
+        }
+        
+        // Update all growing crops
+        function updateCrops() {
+            gameState.plots.forEach(plot => {
+                if (plot.unlocked && plot.cropId) {
+                    const crop = crops[plot.cropId];
+                    const soilMultiplier = gameState.soilTypes[plot.soilType].growthMultiplier;
+                    
+                    // Apply speed boosts from upgrades
+                    const speedMultiplier = calculateSpeedMultiplier(crop.tier);
+                    
+                    // Increase growth based on soil type and speed multiplier
+                    plot.growthProgress += (1 / crop.growTime) * 100 * soilMultiplier * speedMultiplier;
+                    
+                    // If fully grown, update UI
+                    if (plot.growthProgress >= 100) {
+                        plot.growthProgress = 100;
+                        updatePlotUI(plot.id);
+                    } else {
+                        // Update progress bar
+                        const progressBar = document.querySelector(`#plot-${plot.id} .progress-bar`);
+                        if (progressBar) {
+                            progressBar.style.width = `${plot.growthProgress}%`;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Calculate speed multiplier from upgrades
+        function calculateSpeedMultiplier(cropTier) {
+            // Start with global speed upgrade
+            let multiplier = 1 + (gameState.upgrades.speedGlobal.level * gameState.upgrades.speedGlobal.effect);
+            
+            // Add tier-specific speed upgrades
+            switch(cropTier) {
+                case 1:
+                    multiplier += gameState.upgrades.speedTier1.level * gameState.upgrades.speedTier1.effect;
+                    break;
+                case 2:
+                    multiplier += gameState.upgrades.speedTier2.level * gameState.upgrades.speedTier2.effect;
+                    break;
+                case 3:
+                    multiplier += gameState.upgrades.speedTier3.level * gameState.upgrades.speedTier3.effect;
+                    break;
+                case 4:
+                    multiplier += gameState.upgrades.speedTier4.level * gameState.upgrades.speedTier4.effect;
+                    break;
+            }
+            
+            return multiplier;
+        }
+        
+        // Calculate product (sell price) multiplier from upgrades
+        function calculateProductMultiplier(cropTier) {
+            // Start with global product upgrade
+            let multiplier = 1 + (gameState.upgrades.productGlobal.level * gameState.upgrades.productGlobal.effect);
+            
+            // Add tier-specific product upgrades
+            switch(cropTier) {
+                case 1:
+                    multiplier += gameState.upgrades.productTier1.level * gameState.upgrades.productTier1.effect;
+                    break;
+                case 2:
+                    multiplier += gameState.upgrades.productTier2.level * gameState.upgrades.productTier2.effect;
+                    break;
+                case 3:
+                    multiplier += gameState.upgrades.productTier3.level * gameState.upgrades.productTier3.effect;
+                    break;
+                case 4:
+                    multiplier += gameState.upgrades.productTier4.level * gameState.upgrades.productTier4.effect;
+                    break;
+            }
+            
+            return multiplier;
+        }
+        
+        // Calculate rarity modifiers from upgrades
+        function calculateRarityChance() {
+            let baseRarityChance = gameState.upgrades.rarityChance.level * gameState.upgrades.rarityChance.effect;
+            
+            // Adjust rarity chances based on the upgrade
+            return {
+                common: Math.max(0.7 - baseRarityChance, 0.5),
+                uncommon: 0.1 + (baseRarityChance * 0.3),
+                rare: 0.04 + (baseRarityChance * 0.4),
+                epic: 0.01 + (baseRarityChance * 0.3)
+            };
+        }
+        
+        // Calculate rarity bonus multiplier
+        function calculateRarityBonus() {
+            return 1 + (gameState.upgrades.rarityBonus.level * gameState.upgrades.rarityBonus.effect);
+        }
+        
+        // Determine rarity for a new crop
+        function determineRarity() {
+            const rarityChances = calculateRarityChance();
+            const roll = Math.random();
+            
+            if (roll < rarityChances.epic) {
+                return 'epic';
+            } else if (roll < rarityChances.epic + rarityChances.rare) {
+                return 'rare';
+            } else if (roll < rarityChances.epic + rarityChances.rare + rarityChances.uncommon) {
+                return 'uncommon';
+            } else {
+                return 'common';
+            }
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            moneyDisplay.textContent = Math.floor(gameState.money);
+            levelDisplay.textContent = gameState.level;
+            premiumDisplay.textContent = gameState.premiumCurrency;
+        }
+        
+        // Render all plots
+        function renderPlots() {
+            plotsContainer.innerHTML = '';
+            
+            // First render unlocked plots
+            gameState.plots.forEach(plot => {
+                if (plot.unlocked) {
+                    const plotElement = document.createElement('div');
+                    plotElement.className = 'plot';
+                    plotElement.id = `plot-${plot.id}`;
+                    
+                    // If there's a crop growing, show it
+                    if (plot.cropId) {
+                        const crop = crops[plot.cropId];
+                        const isReady = plot.growthProgress >= 100;
+                        
+                        plotElement.innerHTML = `
+                            <div class="crop-growing ${plot.rarity !== 'common' ? 'rare-crop' : ''}">
+                                <div class="crop-icon">${crop.icon}</div>
+                                ${plot.rarity !== 'common' ? `<div class="badge">${rarityLevels[plot.rarity].name}</div>` : ''}
+                            </div>
+                            ${isReady ? '<div class="plot-status">Ready to harvest!</div>' : ''}
+                            <div class="progress-bar" style="width: ${plot.growthProgress}%"></div>
+                        `;
+                        // Continuing from where the code cut off:
+if (isReady) {
+    plotElement.style.backgroundColor = '#78a046';
+    plotElement.style.cursor = 'pointer';
+    plotElement.addEventListener('click', () => harvestCrop(plot.id));
+} else {
+    plotElement.addEventListener('click', () => showCropInfo(plot.id));
+}
+                    } else {
+                        // Empty plot that can be planted
+                        plotElement.innerHTML = `
+                            <div class="plot-status">Empty Plot</div>
+                            <div class="plot-status">${gameState.soilTypes[plot.soilType].name}</div>
+                        `;
+                        plotElement.addEventListener('click', () => openPlantMenu(plot.id));
+                    }
+                    
+                    plotsContainer.appendChild(plotElement);
+                }
+            });
+            
+            // Then add a locked plot if not at max plots
+            const unlockedPlots = gameState.plots.filter(p => p.unlocked).length;
+            const maxPlots = unlockedPlots + 1;
+            
+            if (unlockedPlots < 10) {  // Max of 10 plots total
+                const nextPlotCost = (gameState.upgrades.plotUnlock.level + 1) * gameState.upgrades.plotUnlock.cost;
+                
+                const lockedPlot = document.createElement('div');
+                lockedPlot.className = 'plot locked';
+                lockedPlot.innerHTML = `
+                    <div class="plot-status">Locked Plot</div>
+                    <div class="plot-status">Cost: ${nextPlotCost} 💰</div>
+                `;
+                lockedPlot.addEventListener('click', () => unlockPlot());
+                
+                plotsContainer.appendChild(lockedPlot);
+            }
+        }
+        
+        // Update a specific plot's UI
+        function updatePlotUI(plotId) {
+            const plot = gameState.plots.find(p => p.id === plotId);
+            const plotElement = document.getElementById(`plot-${plotId}`);
+            
+            if (plot && plotElement) {
+                if (plot.cropId) {
+                    const crop = crops[plot.cropId];
+                    const isReady = plot.growthProgress >= 100;
+                    
+                    plotElement.innerHTML = `
+                        <div class="crop-growing ${plot.rarity !== 'common' ? 'rare-crop' : ''}">
+                            <div class="crop-icon">${crop.icon}</div>
+                            ${plot.rarity !== 'common' ? `<div class="badge">${rarityLevels[plot.rarity].name}</div>` : ''}
+                        </div>
+                        ${isReady ? '<div class="plot-status">Ready to harvest!</div>' : ''}
+                        <div class="progress-bar" style="width: ${plot.growthProgress}%"></div>
+                    `;
+                    
+                    if (isReady) {
+                        plotElement.style.backgroundColor = '#78a046';
+                        plotElement.style.cursor = 'pointer';
+                        
+                        // Remove any existing event listeners and add new one
+                        plotElement.replaceWith(plotElement.cloneNode(true));
+                        document.getElementById(`plot-${plotId}`).addEventListener('click', () => harvestCrop(plotId));
+                    } else {
+                        plotElement.style.backgroundColor = '#a87036';
+                        
+                        // Remove any existing event listeners and add new one
+                        plotElement.replaceWith(plotElement.cloneNode(true));
+                        document.getElementById(`plot-${plotId}`).addEventListener('click', () => showCropInfo(plotId));
+                    }
+                } else {
+                    plotElement.innerHTML = `
+                        <div class="plot-status">Empty Plot</div>
+                        <div class="plot-status">${gameState.soilTypes[plot.soilType].name}</div>
+                    `;
+                    plotElement.style.backgroundColor = '#a87036';
+                    
+                    // Remove any existing event listeners and add new one
+                    plotElement.replaceWith(plotElement.cloneNode(true));
+                    document.getElementById(`plot-${plotId}`).addEventListener('click', () => openPlantMenu(plotId));
+                }
+            }
+        }
+        
+        // Plant menu
+        function openPlantMenu(plotId) {
+            // First, make sure the shop tab is active
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(tc => tc.classList.remove('active'));
+            
+            const shopTab = document.querySelector('[data-tab="shop"]');
+            shopTab.classList.add('active');
+            document.getElementById('shop').classList.add('active');
+            
+            // Highlight the plot being planted
+            gameState.plots.forEach(plot => {
+                const plotEl = document.getElementById(`plot-${plot.id}`);
+                if (plotEl) {
+                    if (plot.id === plotId) {
+                        plotEl.style.border = '3px solid #4caf50';
+                    } else {
+                        plotEl.style.border = '3px solid #7f5425';
+                    }
+                }
+            });
+            
+            // Update shop to show planting options
+            renderShop(plotId);
+            
+            showNotification(`Select a crop to plant in plot ${plotId + 1}`);
+        }
+        
+        // Plant a crop in a plot
+        function plantCrop(plotId, cropId) {
+            const plot = gameState.plots.find(p => p.id === plotId);
+            const crop = crops[cropId];
+            
+            if (plot && crop && gameState.money >= crop.cost) {
+                gameState.money -= crop.cost;
+                plot.cropId = cropId;
+                plot.plantedTime = Date.now();
+                plot.growthProgress = 0;
+                plot.rarity = determineRarity();
+                
+                if (plot.rarity !== 'common') {
+                    gameState.stats.rareCropsFound++;
+                    showNotification(`You found a ${rarityLevels[plot.rarity].name} ${crop.name}!`);
+                }
+                
+                updatePlotUI(plotId);
+                renderShop(); // Reset shop view
+                updateUI();
+                
+                showNotification(`Planted ${crop.name} in plot ${plotId + 1}`);
+            } else if (gameState.money < crop.cost) {
+                showNotification('Not enough money to buy this crop!', 'error');
+            }
+        }
+        
+        // Harvest a fully grown crop
+        function harvestCrop(plotId) {
+            const plot = gameState.plots.find(p => p.id === plotId);
+            
+            if (plot && plot.cropId && plot.growthProgress >= 100) {
+                const crop = crops[plot.cropId];
+                const rarityMultiplier = rarityLevels[plot.rarity].valueMultiplier * calculateRarityBonus();
+                const productMultiplier = calculateProductMultiplier(crop.tier);
+                
+                // Calculate earnings with all multipliers
+                const earnings = Math.floor(crop.sellPrice * rarityMultiplier * productMultiplier);
+                
+                gameState.money += earnings;
+                gameState.stats.totalMoney += earnings;
+                gameState.stats.cropsHarvested++;
+                
+                // Determine if player levels up
+                const levelUpThreshold = gameState.level * 1000;
+                if (gameState.stats.totalMoney >= levelUpThreshold) {
+                    gameState.level++;
+                    showNotification(`Level up! You're now level ${gameState.level}!`);
+                    // Check for new crop unlocks
+                    Object.values(crops).forEach(crop => {
+                        if (crop.unlockLevel === gameState.level) {
+                            showNotification(`New crop unlocked: ${crop.name}!`);
+                        }
+                    });
+                    renderShop();
+                }
+                
+                // Clear the plot
+                plot.cropId = null;
+                plot.growthProgress = 0;
+                plot.plantedTime = 0;
+                plot.rarity = 'common';
+                
+                updatePlotUI(plotId);
+                updateUI();
+                
+                showNotification(`Harvested ${crop.name} for ${earnings} 💰`);
+            }
+        }
+        
+        // Show info about a growing crop
+        function showCropInfo(plotId) {
+            const plot = gameState.plots.find(p => p.id === plotId);
+            
+            if (plot && plot.cropId) {
+                const crop = crops[plot.cropId];
+                const rarityMultiplier = rarityLevels[plot.rarity].valueMultiplier * calculateRarityBonus();
+                const productMultiplier = calculateProductMultiplier(crop.tier);
+                const earnings = Math.floor(crop.sellPrice * rarityMultiplier * productMultiplier);
+                
+                const timeRemaining = Math.ceil((100 - plot.growthProgress) / 100 * crop.growTime);
+                
+                showNotification(`
+                    ${crop.name} (${rarityLevels[plot.rarity].name})<br>
+                    Growth: ${Math.floor(plot.growthProgress)}%<br>
+                    Time Remaining: ~${timeRemaining} seconds<br>
+                    Estimated Value: ${earnings} 💰
+                `);
+            }
+        }
+        
+        // Unlock a new plot
+        function unlockPlot() {
+            const upgradeCost = (gameState.upgrades.plotUnlock.level + 1) * gameState.upgrades.plotUnlock.cost;
+            
+            if (gameState.money >= upgradeCost && gameState.upgrades.plotUnlock.level < gameState.upgrades.plotUnlock.maxLevel) {
+                gameState.money -= upgradeCost;
+                gameState.upgrades.plotUnlock.level++;
+                
+                // Add new plot
+                const newPlotId = gameState.plots.length;
+                gameState.plots.push({
+                    id: newPlotId,
+                    unlocked: true,
+                    cropId: null,
+                    soilType: 'basic',
+                    plantedTime: 0,
+                    growthProgress: 0,
+                    rarity: 'common'
+                });
+                
+                renderPlots();
+                updateUI();
+                
+                showNotification(`Unlocked new plot!`);
+            } else if (gameState.money < upgradeCost) {
+                showNotification('Not enough money to unlock a new plot!', 'error');
+            } else {
+                showNotification('You have reached the maximum number of plots!', 'error');
+            }
+        }
+        
+        // Render shop items
+        function renderShop(selectedPlotId = null) {
+            cropsShop.innerHTML = '';
+            
+            Object.values(crops).forEach(crop => {
+                // Only show crops that are unlocked based on player level
+                if (crop.unlockLevel <= gameState.level) {
+                    const shopItem = document.createElement('div');
+                    shopItem.className = 'shop-item';
+                    
+                    const growTimeModified = crop.growTime / calculateSpeedMultiplier(crop.tier);
+                    const sellPriceModified = Math.floor(crop.sellPrice * calculateProductMultiplier(crop.tier));
+                    
+                    shopItem.innerHTML = `
+                        <div class="item-image">${crop.icon}</div>
+                        <div class="item-info">
+                            <div class="item-name">${crop.name}</div>
+                            <div class="item-desc">Cost: ${crop.cost} 💰 | Growth: ${growTimeModified}s | Sell: ${sellPriceModified} 💰</div>
+                        </div>
+                        <button class="btn" id="buy-${crop.id}" ${gameState.money < crop.cost ? 'disabled' : ''}>
+                            ${selectedPlotId !== null ? 'Plant' : 'Buy'}
+                        </button>
+                    `;
+                    
+                    cropsShop.appendChild(shopItem);
+                    
+                    // Add event listener for buying/planting
+                    document.getElementById(`buy-${crop.id}`).addEventListener('click', () => {
+                        if (selectedPlotId !== null) {
+                            plantCrop(selectedPlotId, crop.id);
+                            
+                            // Reset plot borders
+                            gameState.plots.forEach(plot => {
+                                const plotEl = document.getElementById(`plot-${plot.id}`);
+                                if (plotEl) {
+                                    plotEl.style.border = '3px solid #7f5425';
+                                }
+                            });
+                        } else {
+                            showNotification(`Click on an empty plot to plant ${crop.name}`);
+                            openPlantMenu(gameState.plots.find(p => p.unlocked && !p.cropId).id);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Render all upgrades
+        function renderAllUpgrades() {
+            renderFarmUpgrades();
+            renderSpeedUpgrades();
+            renderProductUpgrades();
+            renderRarityUpgrades();
+        }
+        
+        // Render farm upgrades
+        function renderFarmUpgrades() {
+            farmUpgradesList.innerHTML = '';
+            
+            // Plot unlock upgrade
+            if (gameState.upgrades.plotUnlock.level < gameState.upgrades.plotUnlock.maxLevel) {
+                const upgradeCost = (gameState.upgrades.plotUnlock.level + 1) * gameState.upgrades.plotUnlock.cost;
+                
+                const upgradeItem = document.createElement('div');
+                upgradeItem.className = 'upgrade-item';
+                upgradeItem.innerHTML = `
+                    <div class="item-image">🏞️</div>
+                    <div class="item-info">
+                        <div class="item-name">New Plot (${gameState.upgrades.plotUnlock.level}/${gameState.upgrades.plotUnlock.maxLevel})</div>
+                        <div class="item-desc">Unlock a new plot of land to grow more crops.</div>
+                        <div class="upgrade-progress">
+                            <span>${gameState.upgrades.plotUnlock.level}</span>
+                            <div class="upgrade-bar">
+                                <div class="upgrade-bar-fill" style="width: ${(gameState.upgrades.plotUnlock.level / gameState.upgrades.plotUnlock.maxLevel) * 100}%"></div>
+                            </div>
+                            <span>${gameState.upgrades.plotUnlock.maxLevel}</span>
+                        </div>
+                    </div>
+                    <button class="btn" id="upgrade-plot" ${gameState.money < upgradeCost ? 'disabled' : ''}>
+                        ${upgradeCost} 💰
+                    </button>
+                `;
+                
+                farmUpgradesList.appendChild(upgradeItem);
+                
+                // Add event listener
+                document.getElementById('upgrade-plot').addEventListener('click', () => unlockPlot());
+            }
+            
+            // Soil upgrades
+            const soilUpgrades = [
+                { 
+                    id: 'soilFertile', 
+                    name: 'Fertile Soil', 
+                    desc: 'Increases crop growth speed by 50%', 
+                    icon: '🌱', 
+                    soilType: 'fertile' 
+                },
+                { 
+                    id: 'soilRich', 
+                    name: 'Rich Soil', 
+                    desc: 'Doubles crop growth speed', 
+                    icon: '🌿', 
+                    soilType: 'rich' 
+                },
+                { 
+                    id: 'soilPremium', 
+                    name: 'Premium Soil', 
+                    desc: 'Triples crop growth speed', 
+                    icon: '🍀', 
+                    soilType: 'premium' 
+                }
+            ];
+            
+            soilUpgrades.forEach(upgrade => {
+                // Only show if not already at max level
+                if (gameState.upgrades[upgrade.id].level < gameState.upgrades[upgrade.id].maxLevel) {
+                    const upgradeCost = gameState.upgrades[upgrade.id].cost;
+                    
+                    const upgradeItem = document.createElement('div');
+                    upgradeItem.className = 'upgrade-item';
+                    upgradeItem.innerHTML = `
+                        <div class="item-image">${upgrade.icon}</div>
+                        <div class="item-info">
+                            <div class="item-name">${upgrade.name} (${gameState.upgrades[upgrade.id].level}/${gameState.upgrades[upgrade.id].maxLevel})</div>
+                            <div class="item-desc">${upgrade.desc}</div>
+                            <div class="upgrade-progress">
+                                <span>${gameState.upgrades[upgrade.id].level}</span>
+                                <div class="upgrade-bar">
+                                    <div class="upgrade-bar-fill" style="width: ${(gameState.upgrades[upgrade.id].level / gameState.upgrades[upgrade.id].maxLevel) * 100}%"></div>
+                                </div>
+                                <span>${gameState.upgrades[upgrade.id].maxLevel}</span>
+                            </div>
+                        </div>
+                        <button class="btn" id="upgrade-${upgrade.id}" ${gameState.money < upgradeCost ? 'disabled' : ''}>
+                            ${upgradeCost} 💰
+                        </button>
+                    `;
+                    
+                    farmUpgradesList.appendChild(upgradeItem);
+                    
+                    // Add event listener
+                    document.getElementById(`upgrade-${upgrade.id}`).addEventListener('click', () => {
+                        purchaseUpgrade(upgrade.id, () => {
+                            // Unlock soil type
+                            gameState.soilTypes[upgrade.soilType].unlocked = true;
+                            showNotification(`Unlocked ${upgrade.name}!`);
+                            renderFarmUpgrades();
+                        });
+                    });
+                }
+            });
+            
+            // Offline Bonus upgrade
+            if (gameState.upgrades.offlineBonus.level < gameState.upgrades.offlineBonus.maxLevel) {
+                const upgradeCost = gameState.upgrades.offlineBonus.cost * (gameState.upgrades.offlineBonus.level + 1);
+                
+                const upgradeItem = document.createElement('div');
+                upgradeItem.className = 'upgrade-item';
+                upgradeItem.innerHTML = `
+                    <div class="item-image">⏰</div>
+                    <div class="item-info">
+                        <div class="item-name">Offline Earnings (${gameState.upgrades.offlineBonus.level}/${gameState.upgrades.offlineBonus.maxLevel})</div>
+                        <div class="item-desc">Increase earnings while you're away by ${(gameState.upgrades.offlineBonus.level + 1) * 20}%</div>
+                        <div class="upgrade-progress">
+                            <span>${gameState.upgrades.offlineBonus.level}</span>
+                            <div class="upgrade-bar">
+                                <div class="upgrade-bar-fill" style="width: ${(gameState.upgrades.offlineBonus.level / gameState.upgrades.offlineBonus.maxLevel) * 100}%"></div>
+                            </div>
+                            <span>${gameState.upgrades.offlineBonus.maxLevel}</span>
+                        </div>
+                    </div>
+                    <button class="btn" id="upgrade-offlineBonus" ${gameState.money < upgradeCost ? 'disabled' : ''}>
+                        ${upgradeCost} 💰
+                    </button>
+                `;
+                
+                farmUpgradesList.appendChild(upgradeItem);
+                
+                // Add event listener
+                document.getElementById('upgrade-offlineBonus').addEventListener('click', () => {
+                    purchaseUpgrade('offlineBonus', () => {
+                        showNotification(`Improved offline earnings!`);
+                        renderFarmUpgrades();
+                    });
+                });
+            }
+            
+            // Show soil management options if any improved soil is unlocked
+            if (gameState.soilTypes.fertile.unlocked || gameState.soilTypes.rich.unlocked || gameState.soilTypes.premium.unlocked) {
+                const soilManagementTitle = document.createElement('h3');
+                soilManagementTitle.textContent = 'Soil Management';
+                soilManagementTitle.style.marginTop = '20px';
+                farmUpgradesList.appendChild(soilManagementTitle);
+                
+                const soilManagementDesc = document.createElement('p');
+                soilManagementDesc.textContent = 'Click a plot, then click a soil type to apply:';
+                soilManagementDesc.style.fontSize = '14px';
+                soilManagementDesc.style.marginBottom = '10px';
+                farmUpgradesList.appendChild(soilManagementDesc);
+                
+                const soilButtonsContainer = document.createElement('div');
+                soilButtonsContainer.style.display = 'flex';
+                soilButtonsContainer.style.gap = '10px';
+                soilButtonsContainer.style.flexWrap = 'wrap';
+                
+                Object.entries(gameState.soilTypes).forEach(([soilId, soil]) => {
+                    if (soil.unlocked) {
+                        const soilButton = document.createElement('button');
+                        soilButton.className = 'btn';
+                        soilButton.innerHTML = `${soil.name} (${soil.growthMultiplier}x)`;
+                        soilButton.addEventListener('click', () => selectSoilType(soilId));
+                        soilButtonsContainer.appendChild(soilButton);
+                    }
+                });
+                
+                farmUpgradesList.appendChild(soilButtonsContainer);
+            }
+        }
+        
+        // Select soil type to apply
+        function selectSoilType(soilId) {
+            // Highlight plots that can have soil applied
+            gameState.plots.forEach(plot => {
+                if (plot.unlocked) {
+                    const plotEl = document.getElementById(`plot-${plot.id}`);
+                    if (plotEl) {
+                        if (!plot.cropId) { // Only empty plots can have soil changed
+                            plotEl.style.border = '3px solid #4caf50';
+                            
+                            // Add temporary click event
+                            const newPlot = plotEl.cloneNode(true);
+                            plotEl.replaceWith(newPlot);
+                            newPlot.addEventListener('click', () => {
+                                applySoil(plot.id, soilId);
+                            });
+                        } else {
+                            plotEl.style.opacity = '0.5';
+                        }
+                    }
+                }
+            });
+            
+            showNotification(`Select an empty plot to apply ${gameState.soilTypes[soilId].name}`);
+        }
+        
+        // Apply soil to a plot
+        function applySoil(plotId, soilId) {
+            const plot = gameState.plots.find(p => p.id === plotId);
+            
+            if (plot && !plot.cropId) {
+                plot.soilType = soilId;
+                updatePlotUI(plotId);
+                
+                // Reset all plot styling
+                gameState.plots.forEach(p => {
+                    const plotEl = document.getElementById(`plot-${p.id}`);
+                    if (plotEl) {
+                        plotEl.style.border = '3px solid #7f5425';
+                        plotEl.style.opacity = '1';
+                        
+                        // Remove temporary event and restore original
+                        const newPlot = plotEl.cloneNode(true);
+                        plotEl.replaceWith(newPlot);
+                        if (p.cropId) {
+                            if (p.growthProgress >= 100) {
+                                newPlot.addEventListener('click', () => harvestCrop(p.id));
+                            } else {
+                                newPlot.addEventListener('click', () => showCropInfo(p.id));
+                            }
+                        } else {
+                            newPlot.addEventListener('click', () => openPlantMenu(p.id));
+                        }
+                    }
+                });
+                
+                showNotification(`Applied ${gameState.soilTypes[soilId].name} to plot ${plotId + 1}`);
+            }
+        }
+        
+        // Render speed upgrades
+        function renderSpeedUpgrades() {
+            speedUpgradesList.innerHTML = '';
+            
+            // Global speed upgrade
+            renderUpgradeItem(
+                speedUpgradesList, 
+                'speedGlobal', 
+                '⚡', 
+                'Growth Speed', 
+                `Increases crop growth speed by ${gameState.upgrades.speedGlobal.effect * 100}% per level`
+            );
+            
+            // Tier-specific speed upgrades
+            renderUpgradeItem(
+                speedUpgradesList, 
+                'speedTier1', 
+                '🌾', 
+                'Tier 1 Speed', 
+                `Increases Tier 1 crop growth speed by ${gameState.upgrades.speedTier1.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                speedUpgradesList, 
+                'speedTier2', 
+                '🍅', 
+                'Tier 2 Speed', 
+                `Increases Tier 2 crop growth speed by ${gameState.upgrades.speedTier2.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                speedUpgradesList, 
+                'speedTier3', 
+                '🍍', 
+                'Tier 3 Speed', 
+                `Increases Tier 3 crop growth speed by ${gameState.upgrades.speedTier3.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                speedUpgradesList, 
+                'speedTier4', 
+                '🌻', 
+                'Tier 4 Speed', 
+                `Increases Tier 4 crop growth speed by ${gameState.upgrades.speedTier4.effect * 100}% per level`
+            );
+        }
+        
+        // Render product upgrades
+        function renderProductUpgrades() {
+            productUpgradesList.innerHTML = '';
+            
+            // Global product upgrade
+            renderUpgradeItem(
+                productUpgradesList, 
+                'productGlobal', 
+                '💰', 
+                'Crop Value', 
+                `Increases all crop sell prices by ${gameState.upgrades.productGlobal.effect * 100}% per level`
+            );
+            
+            // Tier-specific product upgrades
+            renderUpgradeItem(
+                productUpgradesList, 
+                'productTier1', 
+                '🌾', 
+                'Tier 1 Value', 
+                `Increases Tier 1 crop sell prices by ${gameState.upgrades.productTier1.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                productUpgradesList, 
+                'productTier2', 
+                '🍅', 
+                'Tier 2 Value', 
+                `Increases Tier 2 crop sell prices by ${gameState.upgrades.productTier2.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                productUpgradesList, 
+                'productTier3', 
+                '🍍', 
+                'Tier 3 Value', 
+                `Increases Tier 3 crop sell prices by ${gameState.upgrades.productTier3.effect * 100}% per level`
+            );
+            
+            renderUpgradeItem(
+                productUpgradesList, 
+                'productTier4', 
+                '🌻', 
+                'Tier 4 Value', 
+                `Increases Tier 4 crop sell prices by ${gameState.upgrades.productTier4.effect * 100}% per level`
+            );
+        }
+        
+        // Render rarity upgrades
+        function renderRarityUpgrades() {
+            rarityUpgradesList.innerHTML = '';
+            
+            // Rarity chance upgrade
+            renderUpgradeItem(
+                rarityUpgradesList, 
+                'rarityChance', 
+                '✨', 
+                'Rarity Chance', 
+                `Increases chance of finding rare crop variants by ${gameState.upgrades.rarityChance.effect * 100}% per level`
+            );
+            
+            // Rarity bonus upgrade
+            renderUpgradeItem(
+                rarityUpgradesList, 
+                'rarityBonus', 
+                '💎', 
+                'Rarity Value', 
+                `Increases rare crop value bonus by ${gameState.upgrades.rarityBonus.effect * 100}% per level`
+            );
+        }
+        
+        // Helper function to render an upgrade item
+        function renderUpgradeItem(container, upgradeId, icon, name, description) {
+            if (gameState.upgrades[upgradeId].level < gameState.upgrades[upgradeId].maxLevel) {
+                const upgradeCost = gameState.upgrades[upgradeId].cost * (gameState.upgrades[upgradeId].level + 1);
+                
+                const upgradeItem = document.createElement('div');
+                upgradeItem.className = 'upgrade-item';
+                upgradeItem.innerHTML = `
+                    <div class="item-image">${icon}</div>
+                    <div class="item-info">
+                        <div class="item-name">${name} (${gameState.upgrades[upgradeId].level}/${gameState.upgrades[upgradeId].maxLevel})</div>
+                        <div class="item-desc">${description}</div>
+                        <div class="upgrade-progress">
+                            <span>${gameState.upgrades[upgradeId].level}</span>
+                            <div class="upgrade-bar">
+                                <div class="upgrade-bar-fill" style="width: ${(gameState.upgrades[upgradeId].level / gameState.upgrades[upgradeId].maxLevel) * 100}%"></div>
+                            </div>
+                            <span>${gameState.upgrades[upgradeId].maxLevel}</span>
+                        </div>
+                    </div>
+                    <button class="btn" id="upgrade-${upgradeId}" ${gameState.money < upgradeCost ? 'disabled' : ''}>
+                        ${upgradeCost} 💰
+                    </button>
+                `;
+                
+                container.appendChild(upgradeItem);
+                
+                // Add event listener
+                document.getElementById(`upgrade-${upgradeId}`).addEventListener('click', () => {
+                    purchaseUpgrade(upgradeId, () => {
+                        showNotification(`Upgraded ${name}!`);
+                        renderAllUpgrades();
+                        renderShop();
+                    });
+                });
+            }
+        }
+        
+        // Purchase an upgrade
+        function purchaseUpgrade(upgradeId, callback) {
+            const upgrade = gameState.upgrades[upgradeId];
+            const upgradeCost = upgrade.cost * (upgrade.level + 1);
+            
+            if (gameState.money >= upgradeCost && upgrade.level < upgrade.maxLevel) {
+                gameState.money -= upgradeCost;
+                upgrade.level++;
+                updateUI();
+                if (callback) callback();
+            } else if (gameState.money < upgradeCost) {
+                showNotification('Not enough money for this upgrade!', 'error');
+            } else {
+                showNotification('This upgrade is already at maximum level!', 'error');
+            }
+        }
+        
+        // Update stats display
+        function updateStats() {
+            statsContainer.innerHTML = '';
+            
+            const stats = [
+                { name: 'Total Money Earned', value: Math.floor(gameState.stats.totalMoney) + ' 💰' },
+                { name: 'Crops Harvested', value: gameState.stats.cropsHarvested },
+                { name: 'Rare Crops Found', value: gameState.stats.rareCropsFound },
+                { name: 'Time Played', value: Math.floor(gameState.stats.timePlayed / 60) + ' min' }
+            ];
+
+            stats.forEach(stat => {
+                const statItem = document.createElement('div');
+                statItem.className = 'stats-item';
+                statItem.innerHTML = `
+                    <span>${stat.name}</span>
+                    <span class="stats-value">${stat.value}</span>
+                `;
+                statsContainer.appendChild(statItem);
+            });
+        }
+
+        // Save game data
+        function saveGame() {
+            gameState.lastSaved = Date.now();
+            localStorage.setItem('cropCommanderSave', JSON.stringify(gameState));
+        }
+
+        // Load game data
+        function loadGame() {
+            const savedData = localStorage.getItem('cropCommanderSave');
+            if (savedData) {
+                gameState = JSON.parse(savedData);
+                showNotification('Game loaded successfully');
+            }
+        }
+
+        // Check for offline rewards
+        function checkOfflineRewards() {
+            const now = Date.now();
+            const offlineTime = Math.floor((now - gameState.lastSaved) / 1000);
+            const earnings = Math.floor((offlineTime / 60) * 10 * (1 + gameState.upgrades.offlineBonus.level * 0.2));
+            
+            if (earnings > 0) {
+                offlineMoneyDisplay.textContent = earnings;
+                offlineRewardsModal.style.display = 'flex';
+                claimRewardsBtn.addEventListener('click', () => {
+                    gameState.money += earnings;
+                    offlineRewardsModal.style.display = 'none';
+                    updateUI();
+                });
+            }
+        }
+
+        // Setup save/load/reset buttons
+        function setupSaveButtons() {
+            document.getElementById('save-game').addEventListener('click', saveGame);
+            document.getElementById('load-game').addEventListener('click', () => {
+                loadGame();
+                renderPlots();
+                renderShop();
+                renderAllUpgrades();
+                updateStats();
+            });
+            document.getElementById('reset-game').addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset all progress?')) {
+                    localStorage.removeItem('cropCommanderSave');
+                    location.reload();
+                }
+            });
+        }
+
+        // Show notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = message;
+            notificationsContainer.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
+
