@@ -624,23 +624,6 @@ function setupAchievementsTab() {
     const tabs = document.querySelector('.tabs');
     const tabsContent = document.querySelector('.sidebar');
     
-    // Create the achievements tab button
-    const achievementsTab = document.createElement('div');
-    achievementsTab.className = 'tab';
-    achievementsTab.setAttribute('data-tab', 'achievements');
-    achievementsTab.textContent = 'Achievements';
-    tabs.appendChild(achievementsTab);
-    
-    // Create achievements content panel
-    const achievementsContent = document.createElement('div');
-    achievementsContent.className = 'tab-content';
-    achievementsContent.id = 'achievements';
-    achievementsContent.innerHTML = `
-        <h2>Achievements</h2>
-        <div id="achievements-list"></div>
-    `;
-    tabsContent.appendChild(achievementsContent);
-    
     // Add event listener for the tab
     achievementsTab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
